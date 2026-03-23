@@ -1,0 +1,14 @@
+{
+  "network": "localhost",
+  "timestamp": "2026-03-23T08:05:12.253Z",
+  "contracts": {
+    "LendFlow": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    "PriceOracle": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+    "LendFlowToken": "0xCafac3dD18aC6c6e92c921884f9E4176737C052c"
+  },
+  "markets": {
+    "ETH": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+    "USDC": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "DAI": "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+  }
+}
