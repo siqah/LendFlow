@@ -1,7 +1,13 @@
+import deployment from '../deployment.json';
+
+const deployedContracts = deployment?.contracts || {};
+const deployedMarkets = deployment?.markets || {};
+
 // ============ Contract Addresses ============
 export const CONTRACT_ADDRESSES = {
-  LendFlow: import.meta.env.VITE_CONTRACT_ADDRESS || '0x5FbDB2315678afecb367f032d93F642f64180aa3',
-  PriceOracle: import.meta.env.VITE_ORACLE_ADDRESS || '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
+  LendFlow: deployedContracts.LendFlow || import.meta.env.VITE_CONTRACT_ADDRESS,
+  PriceOracle: deployedContracts.PriceOracle || import.meta.env.VITE_ORACLE_ADDRESS,
+  LendFlowToken: deployedContracts.LendFlowToken,
 };
 
 // ============ Network Config ============
@@ -12,26 +18,14 @@ export const NETWORKS = {
     chainId: 1337,
     blockExplorer: '',
   },
-  5: {
-    name: 'Goerli Testnet',
-    rpcUrl: 'https://eth-goerli.g.alchemy.com/v2/',
-    chainId: 5,
-    blockExplorer: 'https://goerli.etherscan.io',
-  },
-  1: {
-    name: 'Ethereum Mainnet',
-    rpcUrl: 'https://eth-mainnet.g.alchemy.com/v2/',
-    chainId: 1,
-    blockExplorer: 'https://etherscan.io',
-  },
 };
 
 // ============ Token Constants ============
 export const TOKENS = {
-  ETH: {
-    symbol: 'ETH',
-    name: 'Ethereum',
-    address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
+  WETH: {
+    symbol: 'WETH',
+    name: 'Wrapped Ether',
+    address: deployedMarkets.ETH,
     decimals: 18,
     icon: '⟠',
     color: '#627EEA',
@@ -39,15 +33,15 @@ export const TOKENS = {
   USDC: {
     symbol: 'USDC',
     name: 'USD Coin',
-    address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-    decimals: 6,
+    address: deployedMarkets.USDC,
+    decimals: 18, // MockERC20 deploys with 18 decimals by default
     icon: '💲',
     color: '#2775CA',
   },
   DAI: {
     symbol: 'DAI',
     name: 'Dai Stablecoin',
-    address: '0x6B175474E89094C44Da98b954EedeAC495271d0F',
+    address: deployedMarkets.DAI,
     decimals: 18,
     icon: '◆',
     color: '#F5AC37',
@@ -56,7 +50,7 @@ export const TOKENS = {
 
 export const TOKEN_LIST = Object.values(TOKENS);
 
-// ============ ABI (simplified for frontend) ============
+// ============ ABIs ============
 export const LENDFLOW_ABI = [
   "function deposit(address _token, uint256 _amount) external",
   "function withdraw(address _token, uint256 _amount) external",
@@ -72,19 +66,34 @@ export const LENDFLOW_ABI = [
   "event Deposited(address indexed user, address indexed token, uint256 amount, uint256 timestamp)",
   "event Withdrawn(address indexed user, address indexed token, uint256 amount, uint256 timestamp)",
   "event Borrowed(address indexed user, address indexed token, uint256 amount, uint256 timestamp)",
-  "event Repaid(address indexed user, address indexed token, uint256 amount, uint256 timestamp)",
-  "event Liquidated(address indexed user, address indexed token, uint256 amount, uint256 timestamp)",
+  "event Repaid(address indexed user, address indexed token, uint256 amount, uint256 timestamp)"
 ];
 
 export const PRICE_ORACLE_ABI = [
   "function getPrice(address _token) external view returns (uint256)",
-  "function getMultiplePrices(address[] calldata _tokens) external view returns (uint256[])",
+  "function setPrice(address _token, uint256 _price) external"
 ];
 
-// ============ Demo / Mock Data ============
+export const ERC20_ABI = [
+  "function approve(address spender, uint256 amount) external returns (bool)",
+  "function allowance(address owner, address spender) external view returns (uint256)",
+  "function balanceOf(address account) external view returns (uint256)",
+  "function mint(address to, uint256 amount) public"
+];
+
+// Fallback demo stats used during transition
+export const DEMO_STATS = {
+  totalValueLocked: 68341000,
+  totalBorrows: 27050300,
+  activeUsers: 1250,
+  avgAPY: 5.42,
+  totalRewardsDistributed: 2450000,
+  protocolRevenue: 850000,
+};
+
 export const DEMO_MARKETS = [
   {
-    token: TOKENS.ETH,
+    token: TOKENS.WETH,
     totalDeposits: 15420.5,
     totalBorrows: 8750.3,
     utilizationRate: 56.7,
@@ -114,12 +123,3 @@ export const DEMO_MARKETS = [
     tvl: 12500000,
   },
 ];
-
-export const DEMO_STATS = {
-  totalValueLocked: 68341000,
-  totalBorrows: 27050300,
-  activeUsers: 1250,
-  avgAPY: 5.42,
-  totalRewardsDistributed: 2450000,
-  protocolRevenue: 850000,
-};

@@ -4,7 +4,7 @@ import { formatNumber, formatUSD } from '../utils/helpers';
 import { DEMO_MARKETS, TOKEN_LIST } from '../utils/constants';
 
 export default function Deposit() {
-  const { account, contract } = useWeb3();
+  const { account, contract, tokenContracts } = useWeb3();
   const [selectedToken, setSelectedToken] = useState(TOKEN_LIST[0]);
   const [amount, setAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -15,12 +15,32 @@ export default function Deposit() {
   const estimatedEarnings = amount ? (parseFloat(amount) * selectedMarket.depositAPY / 100).toFixed(4) : '0.00';
 
   const handleDeposit = async () => {
-    if (!amount || parseFloat(amount) <= 0) return;
+    if (!amount || parseFloat(amount) <= 0 || !contract) return;
+    const tokenContract = tokenContracts[selectedToken.symbol];
+    if (!tokenContract) {
+       console.error("Token contract not loaded");
+       return;
+    }
+
     setIsProcessing(true);
     setTxStatus('pending');
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const { ethers } = await import('ethers');
+      const depositAmount = ethers.parseUnits(amount, selectedToken.decimals);
+      const lendFlowAddress = await contract.getAddress();
+      
+      const allowance = await tokenContract.allowance(account, lendFlowAddress);
+      if (allowance < depositAmount) {
+         setTxStatus('approving');
+         const approveTx = await tokenContract.approve(lendFlowAddress, depositAmount);
+         await approveTx.wait();
+         setTxStatus('pending');
+      }
+
+      const tx = await contract.deposit(selectedToken.address, depositAmount);
+      await tx.wait();
+
       setTxStatus('success');
       setAmount('');
     } catch (error) {
@@ -147,7 +167,7 @@ export default function Deposit() {
                 {isProcessing ? (
                   <span className="flex items-center justify-center gap-3">
                     <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    Processing Deposit...
+                    {txStatus === 'approving' ? 'Approving Token...' : 'Processing Deposit...'}
                   </span>
                 ) : !account ? (
                   'Connect Wallet to Deposit'

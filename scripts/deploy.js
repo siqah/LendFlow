@@ -8,6 +8,30 @@ async function main() {
   console.log("Account balance:", (await hre.ethers.provider.getBalance(deployer.address)).toString());
   console.log("");
 
+  // ---- Deploy Mock Tokens ----
+  const MockERC20 = await hre.ethers.getContractFactory("MockERC20");
+
+  const weth = await MockERC20.deploy("Wrapped Ether", "WETH");
+  await weth.waitForDeployment();
+  const WETH_ADDRESS = await weth.getAddress();
+  console.log("✅ Mock WETH deployed to:", WETH_ADDRESS);
+
+  const usdc = await MockERC20.deploy("USD Coin", "USDC");
+  await usdc.waitForDeployment();
+  const USDC_ADDRESS = await usdc.getAddress();
+  console.log("✅ Mock USDC deployed to:", USDC_ADDRESS);
+
+  const dai = await MockERC20.deploy("Dai Stablecoin", "DAI");
+  await dai.waitForDeployment();
+  const DAI_ADDRESS = await dai.getAddress();
+  console.log("✅ Mock DAI deployed to:", DAI_ADDRESS);
+
+  // Mint some initial tokens to the deployer
+  await weth.mint(deployer.address, hre.ethers.parseEther("10000"));
+  await usdc.mint(deployer.address, hre.ethers.parseEther("100000"));
+  await dai.mint(deployer.address, hre.ethers.parseEther("100000"));
+  console.log("   Minted initial mock tokens to deployer account\n");
+
   // ---- Deploy Price Oracle ----
   const PriceOracle = await hre.ethers.getContractFactory("PriceOracle");
   const priceOracle = await PriceOracle.deploy();
@@ -27,13 +51,9 @@ async function main() {
   console.log("✅ LFT Reward Token at:", rewardTokenAddress);
 
   // ---- Add Markets ----
-  const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
-  const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-  const DAI_ADDRESS = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
-
   // Collateral factors: 75% for ETH, 80% for stablecoins
-  await lendFlow.addMarket(ETH_ADDRESS, 7500, 8000);
-  console.log("   Added ETH market (CF: 75%, LT: 80%)");
+  await lendFlow.addMarket(WETH_ADDRESS, 7500, 8000);
+  console.log("   Added WETH market (CF: 75%, LT: 80%)");
 
   await lendFlow.addMarket(USDC_ADDRESS, 8000, 8500);
   console.log("   Added USDC market (CF: 80%, LT: 85%)");
@@ -42,7 +62,7 @@ async function main() {
   console.log("   Added DAI market (CF: 80%, LT: 85%)");
 
   // ---- Set Initial Prices ----
-  await priceOracle.setPrice(ETH_ADDRESS, hre.ethers.parseEther("2000"));
+  await priceOracle.setPrice(WETH_ADDRESS, hre.ethers.parseEther("2000"));
   await priceOracle.setPrice(USDC_ADDRESS, hre.ethers.parseEther("1"));
   await priceOracle.setPrice(DAI_ADDRESS, hre.ethers.parseEther("1"));
   console.log("   Set initial token prices");
@@ -67,7 +87,7 @@ async function main() {
       LendFlowToken: rewardTokenAddress,
     },
     markets: {
-      ETH: ETH_ADDRESS,
+      ETH: WETH_ADDRESS,
       USDC: USDC_ADDRESS,
       DAI: DAI_ADDRESS,
     },
@@ -77,7 +97,11 @@ async function main() {
     "deployment.json",
     JSON.stringify(deploymentInfo, null, 2)
   );
-  console.log("📄 Deployment info saved to deployment.json");
+  fs.writeFileSync(
+    "frontend/src/deployment.json",
+    JSON.stringify(deploymentInfo, null, 2)
+  );
+  console.log("📄 Deployment info saved to deployment.json and frontend/src/deployment.json");
 }
 
 main()

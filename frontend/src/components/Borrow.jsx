@@ -4,7 +4,7 @@ import { formatNumber, formatUSD, getHealthColor, getHealthStatus } from '../uti
 import { DEMO_MARKETS, TOKEN_LIST } from '../utils/constants';
 
 export default function Borrow() {
-  const { account } = useWeb3();
+  const { account, contract } = useWeb3();
   const [selectedToken, setSelectedToken] = useState(TOKEN_LIST[0]);
   const [amount, setAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -12,10 +12,10 @@ export default function Borrow() {
 
   const selectedMarket = DEMO_MARKETS.find(m => m.token.symbol === selectedToken.symbol) || DEMO_MARKETS[0];
 
-  // Simulated user data
+  // Simulated user data until full integration
   const totalCollateral = 150000;
   const currentBorrows = 45000;
-  const collateralFactor = selectedToken.symbol === 'ETH' ? 0.75 : 0.80;
+  const collateralFactor = selectedToken.symbol === 'ETH' || selectedToken.symbol === 'WETH' ? 0.75 : 0.80;
   const maxBorrow = totalCollateral * collateralFactor - currentBorrows;
   const borrowAmount = amount ? parseFloat(amount) * selectedMarket.price : 0;
   const newHealthFactor = currentBorrows + borrowAmount > 0
@@ -23,12 +23,17 @@ export default function Borrow() {
     : Infinity;
 
   const handleBorrow = async () => {
-    if (!amount || parseFloat(amount) <= 0) return;
+    if (!amount || parseFloat(amount) <= 0 || !contract) return;
     setIsProcessing(true);
     setTxStatus('pending');
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const { ethers } = await import('ethers');
+      const borrowAmountWei = ethers.parseUnits(amount, selectedToken.decimals);
+      
+      const tx = await contract.borrow(selectedToken.address, borrowAmountWei);
+      await tx.wait();
+
       setTxStatus('success');
       setAmount('');
     } catch (error) {

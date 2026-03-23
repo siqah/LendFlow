@@ -32,8 +32,9 @@ function NavLink({ to, label, icon }) {
 }
 
 function WalletButton() {
-  const { account, connectWallet, disconnectWallet, loading } = useWeb3();
+  const { account, connectWallet, disconnectWallet, loading, chainId, mintTestTokens } = useWeb3();
   const [showMenu, setShowMenu] = useState(false);
+  const [isMinting, setIsMinting] = useState(false);
 
   if (loading) {
     return (
@@ -49,8 +50,20 @@ function WalletButton() {
     );
   }
 
+  const handleMint = async () => {
+    setIsMinting(true);
+    await mintTestTokens();
+    setIsMinting(false);
+  };
+
   return (
-    <div className="relative">
+    <div className="flex items-center gap-3 relative">
+      {chainId === 1337 && (
+        <button onClick={handleMint} disabled={isMinting}
+          className="hidden md:block px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg hover:bg-emerald-100 transition border border-emerald-200 shadow-sm disabled:opacity-50">
+          {isMinting ? "Minting..." : "Mint Test Tokens"}
+        </button>
+      )}
       <button onClick={() => setShowMenu(!showMenu)}
         className="flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm hover:bg-gray-50 transition-all">
         <div className="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center text-primary-900 font-bold text-xs uppercase">

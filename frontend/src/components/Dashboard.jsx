@@ -62,10 +62,25 @@ function CustomTooltip({ active, payload, label }) {
 }
 
 export default function Dashboard() {
-  const { account } = useWeb3();
-  const [stats] = useState(DEMO_STATS);
-  const [markets] = useState(DEMO_MARKETS);
+  const { account, protocolData } = useWeb3();
+  const [stats, setStats] = useState(DEMO_STATS);
+  const [markets, setMarkets] = useState(DEMO_MARKETS);
   const [historicalData, setHistoricalData] = useState([]);
+
+  useEffect(() => {
+    if (protocolData && protocolData.length > 0) {
+      setMarkets(protocolData);
+      
+      const tvl = protocolData.reduce((acc, m) => acc + m.tvl, 0);
+      const totalBorrowsValue = protocolData.reduce((acc, m) => acc + m.totalBorrows * m.price, 0);
+      
+      setStats({
+        ...DEMO_STATS,
+        totalValueLocked: tvl,
+        totalBorrows: totalBorrowsValue,
+      });
+    }
+  }, [protocolData]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
