@@ -144,7 +144,11 @@ export function Web3Provider({ children }) {
   const connectWallet = async () => {
     try {
       setError(null);
-      if (!window.ethereum) { setError('Please install MetaMask'); return; }
+      if (!window.ethereum) { 
+        setError('Please install MetaMask'); 
+        alert('Please install the MetaMask browser extension to connect your wallet!');
+        return; 
+      }
       await window.ethereum.request({ method: 'eth_requestAccounts' });
       await initWeb3();
     } catch (err) { console.error(err); setError(err.message); }

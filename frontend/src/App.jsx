@@ -8,14 +8,14 @@ import Positions from './components/Positions';
 import MarketStats from './components/MarketStats';
 
 const NAV_ITEMS = [
-  { path: '/', label: 'Dashboard', icon: '📊' },
-  { path: '/markets', label: 'Analytics', icon: '📈' },
-  { path: '/deposit', label: 'Investments', icon: '🏦' },
-  { path: '/borrow', label: 'Borrowings', icon: '💰' },
-  { path: '/positions', label: 'Transactions', icon: '📋' },
+  { path: '/', label: 'Dashboard' },
+  { path: '/markets', label: 'Analytics' },
+  { path: '/deposit', label: 'Investments' },
+  { path: '/borrow', label: 'Borrowings' },
+  { path: '/positions', label: 'Transactions' },
 ];
 
-function NavLink({ to, label, icon }) {
+function NavLink({ to, label }) {
   const location = useLocation();
   const isActive = location.pathname === to;
   return (
@@ -25,7 +25,6 @@ function NavLink({ to, label, icon }) {
           ? 'bg-primary-900 text-white shadow-md'
           : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
       }`}>
-      <span className="text-lg">{icon}</span>
       <span>{label}</span>
     </Link>
   );
@@ -111,7 +110,7 @@ function AppContent() {
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 px-2">Main Menu</h3>
             <div className="space-y-1">
               {NAV_ITEMS.map(item => (
-                <NavLink key={item.path} to={item.path} label={item.label} icon={item.icon} />
+                <NavLink key={item.path} to={item.path} label={item.label} />
               ))}
             </div>
           </div>
