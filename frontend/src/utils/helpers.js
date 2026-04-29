@@ -38,6 +38,7 @@ export function shortenAddress(address, chars = 4) {
 export function formatPercent(num, decimals = 2) {
   if (num === null || num === undefined) return '0%';
   const n = typeof num === 'string' ? parseFloat(num) : num;
+  if (!Number.isFinite(n)) return '0%';
   return `${n.toFixed(decimals)}%`;
 }
 
@@ -62,7 +63,9 @@ export function timeAgo(timestamp) {
  */
 export function fromWei(value, decimals = 18) {
   if (!value) return 0;
-  return parseFloat(value.toString()) / Math.pow(10, decimals);
+  const n = Number(value.toString());
+  if (!Number.isFinite(n)) return 0;
+  return n / Math.pow(10, decimals);
 }
 
 /**
@@ -70,7 +73,9 @@ export function fromWei(value, decimals = 18) {
  */
 export function toWei(value, decimals = 18) {
   if (!value) return '0';
-  return (parseFloat(value) * Math.pow(10, decimals)).toString();
+  const n = typeof value === 'string' ? parseFloat(value) : Number(value);
+  if (!Number.isFinite(n)) return '0';
+  return Math.trunc(n * Math.pow(10, decimals)).toString();
 }
 
 /**

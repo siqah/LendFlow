@@ -28,13 +28,14 @@ A decentralized lending & borrowing platform built with Solidity smart contracts
 
 ## Tech Stack
 
-| Layer      | Technology                              |
-|------------|-----------------------------------------|
-| Contracts  | Solidity 0.8.19, OpenZeppelin v5        |
-| Framework  | Hardhat                                 |
-| Frontend   | React 18, Vite, TailwindCSS             |
-| Web3       | ethers.js v6                            |
-| Charts     | Recharts                                |
+| Layer      | Technology                                              |
+|------------|---------------------------------------------------------|
+| Contracts  | Solidity (`^0.8.19`/`^0.8.20`), OpenZeppelin v5         |
+| Compiler   | Hardhat Solidity compiler `0.8.20`                      |
+| Framework  | Hardhat                                                  |
+| Frontend   | React 18, Vite, TailwindCSS                             |
+| Web3       | ethers.js v6                                             |
+| Charts     | Recharts                                                 |
 
 ## Quick Start
 
@@ -53,16 +54,16 @@ cd frontend && npm install
 
 ### 2. Compile Contracts
 ```bash
-npx hardhat compile
+npm run compile
 ```
 
 ### 3. Deploy Locally
 ```bash
 # Start local blockchain
-npx hardhat node
+npm run node
 
 # Deploy contracts (in another terminal)
-npx hardhat run scripts/deploy.js --network localhost
+npm run deploy:local
 ```
 
 ### 4. Run Frontend
@@ -71,9 +72,15 @@ cd frontend
 npm run dev
 ```
 
-### 5. Connect MetaMask
+### 5. Run Tests (Optional but Recommended)
+```bash
+npm test
+```
+
+### 6. Connect MetaMask
 - Network: `http://127.0.0.1:8545`, Chain ID: `1337`
 - Import a Hardhat test account private key
+- If wallet requests a different network, switch back to local Hardhat (`1337`) before interacting with the app.
 
 ## Smart Contracts
 
@@ -82,6 +89,7 @@ npm run dev
 | `LendFlow.sol`  | Core lending protocol (deposit/borrow/repay/liquidate) |
 | `LendFlowToken.sol` | ERC20 reward token (LFT)                   |
 | `PriceOracle.sol`   | Token price feed with staleness checks     |
+| `MockERC20.sol`     | Mock assets used for local deployment/testing |
 
 ## Project Structure
 
@@ -91,13 +99,15 @@ LendFlow/
 │   ├── interfaces/      # Contract interfaces
 │   ├── LendFlow.sol     # Main lending protocol
 │   ├── LendFlowToken.sol # Reward token
-│   └── PriceOracle.sol  # Price oracle
+│   ├── PriceOracle.sol  # Price oracle
+│   └── MockERC20.sol    # Mock ERC20 tokens for local/dev
 ├── frontend/            # React frontend
 │   └── src/
 │       ├── components/  # Page components
 │       ├── context/     # Web3 context
 │       ├── utils/       # Helpers & constants
-│       └── styles/      # Global CSS
+│       ├── styles/      # Global CSS
+│       └── deployment.json # Auto-generated deployed addresses
 ├── scripts/             # Deployment scripts
 ├── hardhat.config.js    # Hardhat configuration
 └── .env.example         # Environment template
@@ -108,10 +118,23 @@ LendFlow/
 Copy `.env.example` to `.env` and configure:
 
 ```
-GOERLI_RPC_URL=...       # For testnet deployment
-PRIVATE_KEY=...          # Deployer wallet key
-ETHERSCAN_API_KEY=...    # For contract verification
+GOERLI_RPC_URL=...         # Goerli RPC endpoint (legacy testnet config)
+MAINNET_RPC_URL=...        # Mainnet RPC endpoint
+PRIVATE_KEY=...            # Deployer wallet key (never commit)
+ETHERSCAN_API_KEY=...      # Contract verification key
+VITE_CONTRACT_ADDRESS=...  # Frontend fallback protocol address
+VITE_ORACLE_ADDRESS=...    # Frontend fallback oracle address
+VITE_NETWORK_ID=1337       # Frontend network id
 ```
+
+## Deployment Output
+
+Running `npm run deploy:local` writes:
+
+- `deployment.json` in the repository root
+- `frontend/src/deployment.json` for frontend auto-consumption
+
+The frontend reads addresses from `frontend/src/deployment.json` first, then falls back to `VITE_CONTRACT_ADDRESS` and `VITE_ORACLE_ADDRESS` when deployment data is unavailable.
 
 ## License
 

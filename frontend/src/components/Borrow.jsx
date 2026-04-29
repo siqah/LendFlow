@@ -1,26 +1,36 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useWeb3 } from '../context/Web3Context';
 import { formatNumber, formatUSD, getHealthColor, getHealthStatus } from '../utils/helpers';
-import { DEMO_MARKETS, TOKEN_LIST } from '../utils/constants';
+import { TOKEN_LIST } from '../utils/constants';
 
 export default function Borrow() {
-  const { account, contract } = useWeb3();
+  const { account, contract, protocolData, userData } = useWeb3();
   const [selectedToken, setSelectedToken] = useState(TOKEN_LIST[0]);
   const [amount, setAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [txStatus, setTxStatus] = useState(null);
 
-  const selectedMarket = DEMO_MARKETS.find(m => m.token.symbol === selectedToken.symbol) || DEMO_MARKETS[0];
-
-  // Simulated user data until full integration
-  const totalCollateral = 150000;
-  const currentBorrows = 45000;
-  const collateralFactor = selectedToken.symbol === 'ETH' || selectedToken.symbol === 'WETH' ? 0.75 : 0.80;
+  const selectedMarket = useMemo(
+    () => protocolData.find((m) => m.token.symbol === selectedToken.symbol) || null,
+    [protocolData, selectedToken.symbol]
+  );
+  const totalCollateral = useMemo(
+    () => userData.reduce((sum, item) => sum + (item.totalCollateral || 0), 0),
+    [userData]
+  );
+  const currentBorrows = useMemo(
+    () => userData.reduce((sum, item) => sum + (item.borrowedAmount || 0) * (protocolData.find((m) => m.token.symbol === item.token.symbol)?.price || 0), 0),
+    [userData, protocolData]
+  );
+  const collateralFactor = selectedToken.symbol === 'WETH' ? 0.75 : 0.80;
   const maxBorrow = totalCollateral * collateralFactor - currentBorrows;
-  const borrowAmount = amount ? parseFloat(amount) * selectedMarket.price : 0;
+  const selectedPrice = selectedMarket?.price || 0;
+  const borrowAmount = amount ? parseFloat(amount) * selectedPrice : 0;
   const newHealthFactor = currentBorrows + borrowAmount > 0
     ? (totalCollateral * 0.85) / (currentBorrows + borrowAmount)
     : Infinity;
+  const availableLiquidity = Math.max(0, (selectedMarket?.totalDeposits || 0) - (selectedMarket?.totalBorrows || 0));
+  const maxBorrowTokenAmount = selectedPrice > 0 ? (maxBorrow / selectedPrice) : 0;
 
   const handleBorrow = async () => {
     if (!amount || parseFloat(amount) <= 0 || !contract) return;
@@ -80,7 +90,7 @@ export default function Borrow() {
               <label className="block text-sm font-bold text-gray-900 mb-4 uppercase tracking-wider">Select Asset to Borrow</label>
               <div className="grid grid-cols-3 gap-4">
                 {TOKEN_LIST.map((token) => {
-                  const market = DEMO_MARKETS.find(m => m.token.symbol === token.symbol);
+                  const market = protocolData.find((m) => m.token.symbol === token.symbol);
                   return (
                     <button
                       key={token.symbol}
@@ -106,7 +116,7 @@ export default function Borrow() {
                         <span className="font-bold text-gray-900 text-lg">{token.symbol}</span>
                       </div>
                       <p className="text-sm text-amber-600 font-bold mt-1">
-                        Rate: {market?.borrowAPY.toFixed(2) || '0.00'}%
+                        Rate: {(market?.borrowAPY || 0).toFixed(2)}%
                       </p>
                     </button>
                   );
@@ -119,9 +129,9 @@ export default function Borrow() {
               <div className="flex items-center justify-between mb-4">
                 <label className="text-sm font-bold text-gray-900 uppercase tracking-wider">Borrow Amount</label>
                 <div className="flex gap-2 items-center">
-                  <span className="text-xs font-bold text-gray-500">Max: {((maxBorrow / selectedMarket.price) * 0.99).toFixed(4)} {selectedToken.symbol}</span>
+                  <span className="text-xs font-bold text-gray-500">Max: {Math.max(0, maxBorrowTokenAmount * 0.99).toFixed(4)} {selectedToken.symbol}</span>
                   <button
-                    onClick={() => setAmount((maxBorrow / selectedMarket.price * 0.8).toFixed(4))}
+                    onClick={() => setAmount(Math.max(0, maxBorrowTokenAmount * 0.8).toFixed(4))}
                     className="text-xs text-primary-900 bg-primary-100 px-3 py-1.5 rounded-md font-bold hover:bg-primary-200 transition"
                   >
                     Safe Max (80%)
@@ -226,19 +236,19 @@ export default function Borrow() {
             <div className="space-y-4">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500 font-medium">Borrow APY</span>
-                <span className="text-amber-600 font-bold text-base">{selectedMarket.borrowAPY.toFixed(2)}%</span>
+                <span className="text-amber-600 font-bold text-base">{(selectedMarket?.borrowAPY || 0).toFixed(2)}%</span>
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500 font-medium">Available Liquidity</span>
                 <span className="text-gray-900 font-bold">
-                  {formatNumber(selectedMarket.totalDeposits - selectedMarket.totalBorrows)} {selectedToken.symbol}
+                  {formatNumber(availableLiquidity)} {selectedToken.symbol}
                 </span>
               </div>
               <div className="w-full h-px bg-gray-100"></div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500 font-medium">Liquidation Threshold</span>
                 <span className="text-gray-900 font-bold">
-                  {selectedToken.symbol === 'ETH' ? '80%' : '85%'}
+                  {selectedToken.symbol === 'WETH' ? '80%' : '85%'}
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm">

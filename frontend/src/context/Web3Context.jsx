@@ -17,6 +17,14 @@ export function Web3Provider({ children }) {
   const [error, setError] = useState(null);
   const [protocolData, setProtocolData] = useState([]);
   const [userData, setUserData] = useState([]);
+  const clearSessionState = useCallback(() => {
+    setSigner(null);
+    setContract(null);
+    setOracleContract(null);
+    setTokenContracts({});
+    setProtocolData([]);
+    setUserData([]);
+  }, []);
 
   const initWeb3 = useCallback(async () => {
     try {
@@ -54,6 +62,9 @@ export function Web3Provider({ children }) {
             }
           }
           setTokenContracts(tContracts);
+        } else {
+          setAccount(null);
+          clearSessionState();
         }
       }
     } catch (err) {
@@ -62,10 +73,14 @@ export function Web3Provider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [clearSessionState]);
 
   const fetchData = useCallback(async () => {
-    if (!contract || !oracleContract) return;
+    if (!contract || !oracleContract) {
+      setProtocolData([]);
+      setUserData([]);
+      return;
+    }
     try {
       const { ethers } = await import('ethers');
       const pData = [];
@@ -105,10 +120,12 @@ export function Web3Provider({ children }) {
             console.error(`Failed to fetch data for ${symbol}`, e);
         }
       }
-      if (pData.length > 0) setProtocolData(pData);
-      if (uData.length > 0) setUserData(uData);
+      setProtocolData(pData);
+      setUserData(uData);
     } catch (err) {
       console.error("Fetch data error:", err);
+      setProtocolData([]);
+      setUserData([]);
     }
   }, [contract, oracleContract, account]);
 
@@ -126,7 +143,8 @@ export function Web3Provider({ children }) {
           setAccount(accounts[0]);
           await initWeb3();
         } else {
-          setAccount(null); setSigner(null); setContract(null); setOracleContract(null);
+          setAccount(null);
+          clearSessionState();
         }
       };
       const handleChainChanged = () => window.location.reload();
@@ -139,7 +157,7 @@ export function Web3Provider({ children }) {
         window.ethereum.removeListener('chainChanged', handleChainChanged);
       };
     }
-  }, [initWeb3]);
+  }, [initWeb3, clearSessionState]);
 
   const connectWallet = async () => {
     try {
@@ -155,7 +173,9 @@ export function Web3Provider({ children }) {
   };
 
   const disconnectWallet = () => {
-    setAccount(null); setSigner(null); setContract(null); setOracleContract(null); setError(null);
+    setAccount(null);
+    clearSessionState();
+    setError(null);
   };
 
   const mintTestTokens = async () => {

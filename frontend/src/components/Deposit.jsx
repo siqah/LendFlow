@@ -1,18 +1,54 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useWeb3 } from '../context/Web3Context';
 import { formatNumber, formatUSD } from '../utils/helpers';
-import { DEMO_MARKETS, TOKEN_LIST } from '../utils/constants';
+import { TOKEN_LIST } from '../utils/constants';
 
 export default function Deposit() {
-  const { account, contract, tokenContracts } = useWeb3();
+  const { account, contract, tokenContracts, protocolData, userData } = useWeb3();
   const [selectedToken, setSelectedToken] = useState(TOKEN_LIST[0]);
   const [amount, setAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [txStatus, setTxStatus] = useState(null);
+  const [walletBalance, setWalletBalance] = useState(0);
 
-  const selectedMarket = DEMO_MARKETS.find(m => m.token.symbol === selectedToken.symbol) || DEMO_MARKETS[0];
+  const selectedMarket = useMemo(
+    () => protocolData.find((m) => m.token.symbol === selectedToken.symbol) || null,
+    [protocolData, selectedToken.symbol]
+  );
+  const activeDeposits = useMemo(
+    () => userData.filter((item) => item.depositedAmount > 0),
+    [userData]
+  );
 
-  const estimatedEarnings = amount ? (parseFloat(amount) * selectedMarket.depositAPY / 100).toFixed(4) : '0.00';
+  const selectedPrice = selectedMarket?.price || 0;
+  const selectedApy = selectedMarket?.depositAPY || 0;
+  const estimatedEarnings = amount ? (parseFloat(amount) * selectedApy / 100).toFixed(4) : '0.00';
+  const collateralFactor = selectedToken.symbol === 'WETH' ? '75%' : '80%';
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadBalance = async () => {
+      if (!account || !tokenContracts[selectedToken.symbol]) {
+        setWalletBalance(0);
+        return;
+      }
+      try {
+        const { ethers } = await import('ethers');
+        const rawBalance = await tokenContracts[selectedToken.symbol].balanceOf(account);
+        const parsed = parseFloat(ethers.formatUnits(rawBalance, selectedToken.decimals));
+        if (!cancelled) setWalletBalance(parsed);
+      } catch (error) {
+        console.error('Failed to load wallet balance:', error);
+        if (!cancelled) setWalletBalance(0);
+      }
+    };
+
+    loadBalance();
+    return () => {
+      cancelled = true;
+    };
+  }, [account, tokenContracts, selectedToken]);
 
   const handleDeposit = async () => {
     if (!amount || parseFloat(amount) <= 0 || !contract) return;
@@ -71,7 +107,7 @@ export default function Deposit() {
               <label className="block text-sm font-bold text-gray-900 mb-4 uppercase tracking-wider">Select Asset</label>
               <div className="grid grid-cols-3 gap-4">
                 {TOKEN_LIST.map((token) => {
-                  const market = DEMO_MARKETS.find(m => m.token.symbol === token.symbol);
+                  const market = protocolData.find((m) => m.token.symbol === token.symbol);
                   return (
                     <button
                       key={token.symbol}
@@ -97,7 +133,7 @@ export default function Deposit() {
                         <span className="font-bold text-gray-900 text-lg">{token.symbol}</span>
                       </div>
                       <p className="text-sm text-emerald-600 font-semibold mt-1">
-                        APY: +{market?.depositAPY.toFixed(2) || '0.00'}%
+                        APY: +{(market?.depositAPY || 0).toFixed(2)}%
                       </p>
                     </button>
                   );
@@ -110,9 +146,9 @@ export default function Deposit() {
               <div className="flex items-center justify-between mb-4">
                 <label className="text-sm font-bold text-gray-900 uppercase tracking-wider">Amount</label>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">Balance: 10,000 {selectedToken.symbol}</span>
+                  <span className="text-xs text-gray-500">Balance: {formatNumber(walletBalance, 4)} {selectedToken.symbol}</span>
                   <button
-                    onClick={() => setAmount('1000')}
+                    onClick={() => setAmount(walletBalance > 0 ? walletBalance.toFixed(4) : '')}
                     className="text-xs text-primary-900 bg-primary-100 px-2 py-1 rounded font-bold hover:bg-primary-200 transition"
                   >
                     MAX
@@ -134,7 +170,7 @@ export default function Deposit() {
               </div>
               <div className="flex justify-between mt-3 px-2">
                 <p className="text-sm font-medium text-gray-500">
-                  ≈ {formatUSD(parseFloat(amount || 0) * selectedMarket.price)}
+                  ≈ {formatUSD(parseFloat(amount || 0) * selectedPrice)}
                 </p>
               </div>
             </div>
@@ -187,7 +223,7 @@ export default function Deposit() {
             <div className="space-y-4">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500 font-medium">Supply APY</span>
-                <span className="text-emerald-600 font-bold text-base">+{selectedMarket.depositAPY.toFixed(2)}%</span>
+                <span className="text-emerald-600 font-bold text-base">+{selectedApy.toFixed(2)}%</span>
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500 font-medium">Est. Yearly Earnings</span>
@@ -199,12 +235,12 @@ export default function Deposit() {
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500 font-medium">Collateral Factor</span>
                 <span className="text-gray-900 font-bold">
-                  {selectedToken.symbol === 'ETH' ? '75%' : '80%'}
+                  {collateralFactor}
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500 font-medium">Pool Utilization</span>
-                <span className="text-gray-900 font-bold">{selectedMarket.utilizationRate.toFixed(1)}%</span>
+                <span className="text-gray-900 font-bold">{(selectedMarket?.utilizationRate || 0).toFixed(1)}%</span>
               </div>
             </div>
           </div>
@@ -212,26 +248,30 @@ export default function Deposit() {
           <div className="glass-card p-6">
             <h3 className="font-bold text-gray-900 mb-4">Your Active Deposits</h3>
             <div className="space-y-3">
-              {DEMO_MARKETS.map((market, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100 hover:border-gray-200 transition">
-                  <div className="flex items-center gap-3">
-                    <span
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-lg bg-white shadow-sm"
-                      style={{ color: market.token.color }}
-                    >
-                      {market.token.icon}
-                    </span>
-                    <div>
-                      <p className="font-bold text-gray-900 text-sm">{market.token.symbol}</p>
-                      <p className="text-xs text-emerald-600 font-semibold">+{market.depositAPY.toFixed(2)}%</p>
+              {activeDeposits.length === 0 ? (
+                <p className="text-sm text-gray-500">No active deposits yet.</p>
+              ) : (
+                activeDeposits.map((position) => (
+                  <div key={position.token.symbol} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100 hover:border-gray-200 transition">
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-lg bg-white shadow-sm"
+                        style={{ color: position.token.color }}
+                      >
+                        {position.token.icon}
+                      </span>
+                      <div>
+                        <p className="font-bold text-gray-900 text-sm">{position.token.symbol}</p>
+                        <p className="text-xs text-emerald-600 font-semibold">+{(protocolData.find((m) => m.token.symbol === position.token.symbol)?.depositAPY || 0).toFixed(2)}%</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-gray-900 text-sm">{formatNumber(position.depositedAmount, 4)}</p>
+                      <p className="text-xs text-gray-500">{formatUSD(position.depositedAmount * (protocolData.find((m) => m.token.symbol === position.token.symbol)?.price || 0))}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-gray-900 text-sm">{formatNumber(Math.random() * 100, 2)}</p>
-                    <p className="text-xs text-gray-500">{formatUSD(Math.random() * 20000)}</p>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
