@@ -113,11 +113,11 @@ describe("LendFlow Protocol", function () {
 
       await expect(
         lendFlow.connect(user1).deposit(await token.getAddress(), ethers.parseEther("1"))
-      ).to.be.revertedWith("Pausable: paused");
+      ).to.be.revertedWithCustomError(lendFlow, "EnforcedPause");
 
       await expect(
         lendFlow.connect(user1).withdraw(await token.getAddress(), ethers.parseEther("1"))
-      ).to.be.revertedWith("Pausable: paused");
+      ).to.be.revertedWithCustomError(lendFlow, "EnforcedPause");
     });
 
     it("rejects withdraw above user deposit", async function () {
